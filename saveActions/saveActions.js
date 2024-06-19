@@ -20,12 +20,18 @@ async function addDataToRedis(key, value) {
 }
 
 //get data with key
-async function getDataFromRedis(key) {
+async function getDataFromRedis(key, ...values) {
   try {
-    const data = await client.hGetAll(key);
+    //if we need to get special filed pass to value if not get all items
+    let data = null;
+    if (values.length === 0) {
+      data = await client.hGetAll(key);
+    } else {
+      data = await client.hGet(key, ...values);
+    }
     return data;
-  } catch (error) {
-    throw new Error(error.message);
+  } catch (_) {
+    return undefined;
   }
 }
 
