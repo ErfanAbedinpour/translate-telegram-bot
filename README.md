@@ -1,2 +1,2 @@
-# translate-telegram-bot
-tranlsateor telegaram bot with differnt engine for translate with nodejs,redis,mysql
+# translator-telegramBot
+this bot translate a text with diffrent translate engine (googe,micorsoft,faraazin,targoman) bot write with nodejs and node-telegram-bot-api
