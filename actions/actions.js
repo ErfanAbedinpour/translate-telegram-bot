@@ -1,10 +1,11 @@
 const commponents = require("../commponents/commponents");
-const operatorToRedis = require("../saveActions/saveActions");
+const redis = require("../saveActions/saveActions");
 const { messages } = require("../messages/messages");
+const service = require("../service/translate");
 
 //start actions for bot
-exports.startActions = function (bot) {
-  return function (msg, match) {
+exports.startActions = function(bot) {
+  return function(msg, match) {
     const chatId = msg.chat.id;
     bot.sendMessage(
       chatId,
@@ -15,30 +16,39 @@ exports.startActions = function (bot) {
 };
 
 //query selector actins
-exports.callbackQueryActions = function (bot) {
-  return async function (query) {
+exports.callbackQueryActions = function(bot) {
+  return async function(query) {
+    //get user command
     const cmd = query.data;
+    //get user chatid
     const chatId = query.message.chat.id;
+    //get message_id
     const message_id = query.message.message_id;
-    const engines = ["google", "microsoft", "faraazin", "targoman"];
+    //availible engines
+    const engines = ["google", "micorsoft", "faraazin", "targoman"];
     if (engines.includes(cmd)) {
       if (cmd == "targoman") {
-        return bot.sendMessage(chatId, "targoman not avalibale now");
+        return bot.sendMessage(chatId, "ترگومان فعلان در دسترس نیست");
       }
-      processActions(cmd, chatId, message_id, bot);
+      engineActions(cmd, chatId, message_id, bot);
+    } else {
+      bot.sendMessage(chatId, messages.wrongEngineSelect);
     }
   };
 };
 
 // user after select engine run this functions save user engine to redis and send dest lang
 async function engineActions(cmd, chatId, message_id, bot) {
-  await operatorToRedis.addDataToRedis(chatId.toString(), { engine: cmd });
-  editMessage(
-    `موتور ${cmd} با موفقیت انتخاب شد\n ${messages.sendDestLang}`,
-    chatId,
-    message_id,
-    bot,
-  );
+  await redis.addDataToRedis(chatId.toString(), { engine: cmd });
+  let msg = `موتور ${cmd} با موفقیت انتخاب شد\n`;
+  if (cmd == "faraazin" || cmd == "targoman") {
+    msg += "\n فارسی به انگلیسی (fa2en) \n و انگلیسی به فارسی (en2fa)";
+  } else {
+    msg += ` ${messages.sendDestLang}`;
+  }
+  editMessage(msg, chatId, message_id, bot);
+  bot.onReplyToMessage(chatId, message_id, getLang(bot, chatId));
+  bot.emit("get_lang");
 }
 
 //edit message function
@@ -46,5 +56,32 @@ function editMessage(msg, chatId, message_id, bot) {
   bot.editMessageText(msg, {
     chat_id: chatId,
     message_id,
+    reply_force: true,
   });
+}
+
+function getLang(bot, chatId) {
+  return async function(msg) {
+    const message = msg.text;
+    const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
+    if (engine == "targoman" || engine == "faraazin") {
+      if (message != "en2fa" || message != "fa2en") {
+        bot.sendMessage(
+          chatId,
+          `موتور شما ${engine} است و باید \n en2fa یا fa2en استفاده کنید`,
+        );
+      }
+    } else {
+      const lang = service.normalizeDest(message);
+      if (!lang) {
+        bot.sendMessage(chatId, `زبان وارد شده معتبر نیست`);
+      } else {
+        await redis.addDataToRedis(chatId.toString(), { dest: lang });
+        return bot.sendMessage(
+          chatId,
+          " زبان مورد نظر با موفقیت انتخاب شد !!لطفا متن خود برای ترجمه را وارد کنید",
+        );
+      }
+    }
+  };
 }
