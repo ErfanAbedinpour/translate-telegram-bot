@@ -4,8 +4,8 @@ const { messages } = require("../messages/messages");
 const service = require("../service/translate");
 
 //start actions for bot
-exports.startActions = function(bot) {
-  return function(msg, match) {
+exports.startActions = function (bot) {
+  return function (msg, match) {
     const chatId = msg.chat.id;
     bot.sendMessage(
       chatId,
@@ -16,8 +16,8 @@ exports.startActions = function(bot) {
 };
 
 //query selector actins
-exports.callbackQueryActions = function(bot) {
-  return async function(query) {
+exports.callbackQueryActions = function (bot) {
+  return async function (query) {
     //get user command
     const cmd = query.data;
     //get user chatid
@@ -60,8 +60,9 @@ function editMessage(msg, chatId, message_id, bot) {
   });
 }
 
+//get destenition lang as user
 function getLang(bot, chatId) {
-  return async function(msg) {
+  return async function (msg) {
     const message = msg.text;
     const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
     if (engine == "targoman" || engine == "faraazin") {
@@ -79,7 +80,8 @@ function getLang(bot, chatId) {
         await redis.addDataToRedis(chatId.toString(), { dest: lang });
         return bot.sendMessage(
           chatId,
-          " زبان مورد نظر با موفقیت انتخاب شد !!لطفا متن خود برای ترجمه را وارد کنید",
+          `زبان مورد نظر با موفقیت انتخاب شد !!لطفا متن خود برای ترجمه را وارد کنید 
+زبان مورد نظر${lang}`,
         );
       }
     }
