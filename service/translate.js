@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { codes } = require("iso-language-codes");
+
 /**
  * @param {String} text to translate
  * @param {String} dest_lang to translate to this
@@ -92,3 +93,11 @@ function normalizeDest(dest) {
   }
   return null;
 }
+
+module.exports = {
+  google,
+  microsoft,
+  faraazin,
+  targoman,
+  normalizeDest,
+};
