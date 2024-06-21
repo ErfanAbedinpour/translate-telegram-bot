@@ -4,8 +4,8 @@ const { messages } = require("../messages/messages");
 const service = require("../service/translate");
 
 //start actions for bot
-exports.startActions = function (bot) {
-  return function (msg, match) {
+exports.startActions = function(bot) {
+  return function(msg, match) {
     const chatId = msg.chat.id;
     bot.sendMessage(
       chatId,
@@ -16,8 +16,8 @@ exports.startActions = function (bot) {
 };
 
 //query selector actins
-exports.callbackQueryActions = function (bot) {
-  return async function (query) {
+exports.callbackQueryActions = function(bot) {
+  return async function(query) {
     //get user command
     const cmd = query.data;
     //get user chatid
@@ -48,7 +48,6 @@ async function engineActions(cmd, chatId, message_id, bot) {
   }
   editMessage(msg, chatId, message_id, bot);
   bot.onReplyToMessage(chatId, message_id, getLang(bot, chatId));
-  bot.emit("get_lang");
 }
 
 //edit message function
@@ -62,12 +61,14 @@ function editMessage(msg, chatId, message_id, bot) {
 
 //get destenition lang as user
 function getLang(bot, chatId) {
-  return async function (msg) {
+  return async function(msg) {
     const message = msg.text;
     const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
+    const langs = { faraazin: ['en2_fa', 'fa_en'], targoman: ['fa2en', 'en2fa'] }
+    const
     if (engine == "targoman" || engine == "faraazin") {
       if (message != "en2fa" || message != "fa2en") {
-        bot.sendMessage(
+        return bot.sendMessage(
           chatId,
           `موتور شما ${engine} است و باید \n en2fa یا fa2en استفاده کنید`,
         );
@@ -75,15 +76,26 @@ function getLang(bot, chatId) {
     } else {
       const lang = service.normalizeDest(message);
       if (!lang) {
-        bot.sendMessage(chatId, `زبان وارد شده معتبر نیست`);
+        return bot.sendMessage(chatId, `زبان وارد شده معتبر نیست`);
       } else {
         await redis.addDataToRedis(chatId.toString(), { dest: lang });
-        return bot.sendMessage(
+        bot.sendMessage(
           chatId,
           `زبان مورد نظر با موفقیت انتخاب شد !!لطفا متن خود برای ترجمه را وارد کنید 
 زبان مورد نظر${lang}`,
         );
       }
     }
+    bot.on("message", getTextToTranslat(bot));
   };
 }
+
+const getTextToTranslat = function(bot) {
+  return async function(msg, _) {
+    const userInformations = await redis.getDataFromRedis(
+      msg.chat.id.toString(),
+    );
+    console.log(userInformations);
+    bot.sendMessage(msg.chat.id, `yout text is ${msg}`);
+  };
+};
