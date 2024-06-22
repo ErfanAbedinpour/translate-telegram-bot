@@ -6,9 +6,8 @@ const service = require("../service/translate");
 
 //start actions for bot
 exports.startActions = function(bot) {
-
-  return function(msg, match) {
-    bot.removeAllListeners('message')
+  return async function(msg, match) {
+    await bot.removeAllListeners('message')
     const chatId = msg.chat.id;
     bot.sendMessage(
       chatId,
@@ -20,8 +19,8 @@ exports.startActions = function(bot) {
 
 //query selector actins
 exports.callbackQueryActions = function(bot) {
-  bot.removeAllListeners('message')
   return async function(query) {
+    await bot.removeAllListeners('message')
     //get user command
     const cmd = query.data;
     //get user chatid
@@ -52,7 +51,7 @@ async function engineActions(cmd, chatId, message_id, bot) {
     msg += ` ${messages.sendDestLang}`;
   }
   editMessage(msg, chatId, message_id, bot);
-  bot.on('message', getLang(bot, chatId));
+  return bot.on('message', getLang(bot, chatId));
 }
 
 //edit message function
@@ -67,20 +66,25 @@ function editMessage(msg, chatId, message_id, bot) {
 //get destenition lang as user
 function getLang(bot, chatId) {
   return async function(msg) {
-    //get messages
+    const type = msg?.entities?.[0].type
+    //get messages.
+    console.log('type is', type)
     const message = msg.text;
     //save user engine to redis
     const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
     //valid dest lang to faraaznin and targoman engine 
     const validPersianLangEngine = { faraazin: ['fa_en', 'en_fa'], targoman: ['fa2en', 'en2fa'] }
     // logic
+    let isFinishSelected = false;
     switch (engine) {
       case 'faraazin':
       case 'targoman':
+        if (type) break
         if (validPersianLangEngine[engine].includes(message)) {
-          await redis.addDataToRedis(chatId.toString(), { dest: lang });
+          await redis.addDataToRedis(chatId.toString(), { dest: message });
           bot.sendMessage(chatId, `موتور:${engine}\nمقصد:${message} `)
           bot.removeAllListeners('message');
+          isFinishSelected = true
           break
         } else {
           bot.sendMessage(chatId, 'زبان انتخابی مقصد شما نا معتبر است برای \n targoman:fa2en یا en2fa \n faraazin:en_fa یا fa_en')
@@ -88,6 +92,7 @@ function getLang(bot, chatId) {
         }
       case 'microsoft':
       case "google":
+        if (message[0] == '/') break
         const normalizeLang = service.normalizeDest(message)
         if (!normalizeLang) {
           bot.sendMessage(chatId, `${message} وجود ندارد `)
@@ -98,14 +103,44 @@ function getLang(bot, chatId) {
             موتور:${engine}
             مقصد:${normalizeLang}`)
           bot.removeAllListeners('message');
+          isFinishSelected = true
           break
         }
       default:
         bot.sendMessage(chatId, `زبان نامعتبر است`)
         break
     }
+    if (isFinishSelected) {
+      bot.on('message', textToTranslate(bot, chatId))
+    }
   };
 }
 
-function textToTranslate() { }
+function textToTranslate(bot, chatId) {
+  return async function(msg, match) {
+    bot.sendMessage(chatId, 'لطفا صبر کنید')
+    const { engine, dest } = await redis.getDataFromRedis(chatId.toString())
+    const { text } = msg
+    switch (engine) {
+      case "microsoft":
+        var resp = await service.microsoft(dest, text)
+        await bot.sendMessage(chatId, resp)
+        break
+      case "google":
+        resp = await service.google(dest, text)
+        await bot.sendMessage(chatId, resp)
+        break;
+      case 'faraazin':
+        resp = await service.faraazin(dest, text)
+        await bot.sendMessage(chatId, resp)
+        break;
+      case "targoman":
+        resp = await service.faraazin(dest, text)
+        await bot.sendMessage(chatId, resp)
+        break;
+    }
+    bot.sendMessage(chatId, '--------------------------->')
+    bot.sendMessage(chatId, 'متن بعدی را وارد کنید')
+  }
+}
 
