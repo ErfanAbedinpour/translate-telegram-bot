@@ -1,11 +1,14 @@
-const component = require("../commponents/component");
+const component = require("../components/component");
 const redis = require("../saveActions/saveActions");
 const { messages } = require("../messages/messages");
 const service = require("../service/translate");
 
+
 //start actions for bot
 exports.startActions = function(bot) {
+
   return function(msg, match) {
+    bot.removeAllListeners('message')
     const chatId = msg.chat.id;
     bot.sendMessage(
       chatId,
@@ -17,6 +20,7 @@ exports.startActions = function(bot) {
 
 //query selector actins
 exports.callbackQueryActions = function(bot) {
+  bot.removeAllListeners('message')
   return async function(query) {
     //get user command
     const cmd = query.data;
@@ -39,6 +43,7 @@ exports.callbackQueryActions = function(bot) {
 
 // user after select engine run this functions save user engine to redis and send dest lang
 async function engineActions(cmd, chatId, message_id, bot) {
+  bot.removeAllListeners('message')
   await redis.addDataToRedis(chatId.toString(), { engine: cmd });
   let msg = `موتور ${cmd} با موفقیت انتخاب شد\n`;
   if (cmd == "faraazin" || cmd == "targoman") {
@@ -47,7 +52,7 @@ async function engineActions(cmd, chatId, message_id, bot) {
     msg += ` ${messages.sendDestLang}`;
   }
   editMessage(msg, chatId, message_id, bot);
-  bot.onReplyToMessage(chatId, message_id, getLang(bot, chatId));
+  bot.on('message', getLang(bot, chatId));
 }
 
 //edit message function
@@ -62,38 +67,45 @@ function editMessage(msg, chatId, message_id, bot) {
 //get destenition lang as user
 function getLang(bot, chatId) {
   return async function(msg) {
+    //get messages
     const message = msg.text;
+    //save user engine to redis
     const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
-    if (engine == "targoman" || engine == "faraazin") {
-      if (message != "en2fa" || message != "fa2en") {
-        return bot.sendMessage(
-          chatId,
-          `موتور شما ${engine} است و باید \n en2fa یا fa2en استفاده کنید`,
-        );
-      }
-    } else {
-      const lang = service.normalizeDest(message);
-      if (!lang) {
-        return bot.sendMessage(chatId, `زبان وارد شده معتبر نیست`);
-      } else {
-        await redis.addDataToRedis(chatId.toString(), { dest: lang });
-        bot.sendMessage(
-          chatId,
-          `زبان مورد نظر با موفقیت انتخاب شد !!لطفا متن خود برای ترجمه را وارد کنید 
-زبان مورد نظر${lang}`,
-        );
-      }
+    //valid dest lang to faraaznin and targoman engine 
+    const validPersianLangEngine = { faraazin: ['fa_en', 'en_fa'], targoman: ['fa2en', 'en2fa'] }
+    // logic
+    switch (engine) {
+      case 'faraazin':
+      case 'targoman':
+        if (validPersianLangEngine[engine].includes(message)) {
+          await redis.addDataToRedis(chatId.toString(), { dest: lang });
+          bot.sendMessage(chatId, `موتور:${engine}\nمقصد:${message} `)
+          bot.removeAllListeners('message');
+          break
+        } else {
+          bot.sendMessage(chatId, 'زبان انتخابی مقصد شما نا معتبر است برای \n targoman:fa2en یا en2fa \n faraazin:en_fa یا fa_en')
+          break
+        }
+      case 'microsoft':
+      case "google":
+        const normalizeLang = service.normalizeDest(message)
+        if (!normalizeLang) {
+          bot.sendMessage(chatId, `${message} وجود ندارد `)
+          break
+        } else {
+          await redis.addDataToRedis(chatId.toString(), { dest: normalizeLang });
+          bot.sendMessage(chatId, `موفقیت ثبت شد 
+            موتور:${engine}
+            مقصد:${normalizeLang}`)
+          bot.removeAllListeners('message');
+          break
+        }
+      default:
+        bot.sendMessage(chatId, `زبان نامعتبر است`)
+        break
     }
-    bot.on("message", getTextToTranslat(bot));
   };
 }
 
-const getTextToTranslat = function(bot) {
-  return async function(msg, _) {
-    const userInformation = await redis.getDataFromRedis(
-      msg.chat.id.toString(),
-    );
-    console.log(userInformation);
-    bot.sendMessage(msg.chat.id, `your text is ${msg}`);
-  };
-};
+function textToTranslate() { }
+
