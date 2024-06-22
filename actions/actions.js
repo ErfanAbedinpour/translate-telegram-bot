@@ -1,4 +1,4 @@
-const commponents = require("../commponents/commponents");
+const component = require("../commponents/component");
 const redis = require("../saveActions/saveActions");
 const { messages } = require("../messages/messages");
 const service = require("../service/translate");
@@ -10,7 +10,7 @@ exports.startActions = function(bot) {
     bot.sendMessage(
       chatId,
       messages.welcome + "\n" + messages.selectEngine,
-      commponents.menueInlineKeyboard,
+      component.menuInlineKeyboard,
     );
   };
 };
@@ -24,8 +24,8 @@ exports.callbackQueryActions = function(bot) {
     const chatId = query.message.chat.id;
     //get message_id
     const message_id = query.message.message_id;
-    //availible engines
-    const engines = ["google", "micorsoft", "faraazin", "targoman"];
+    //available engines
+    const engines = ["google", "microsoft", "faraazin", "targoman"];
     if (engines.includes(cmd)) {
       if (cmd == "targoman") {
         return bot.sendMessage(chatId, "ترگومان فعلان در دسترس نیست");
@@ -64,8 +64,6 @@ function getLang(bot, chatId) {
   return async function(msg) {
     const message = msg.text;
     const engine = await redis.getDataFromRedis(chatId.toString(), "engine");
-    const langs = { faraazin: ['en2_fa', 'fa_en'], targoman: ['fa2en', 'en2fa'] }
-    const
     if (engine == "targoman" || engine == "faraazin") {
       if (message != "en2fa" || message != "fa2en") {
         return bot.sendMessage(
@@ -92,10 +90,10 @@ function getLang(bot, chatId) {
 
 const getTextToTranslat = function(bot) {
   return async function(msg, _) {
-    const userInformations = await redis.getDataFromRedis(
+    const userInformation = await redis.getDataFromRedis(
       msg.chat.id.toString(),
     );
-    console.log(userInformations);
-    bot.sendMessage(msg.chat.id, `yout text is ${msg}`);
+    console.log(userInformation);
+    bot.sendMessage(msg.chat.id, `your text is ${msg}`);
   };
 };

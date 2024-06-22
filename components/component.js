@@ -1,11 +1,11 @@
-exports.menueInlineKeyboard = {
+exports.menuInlineKeyboard = {
   reply_markup: {
     inline_keyboard: [
       [
         { text: " 🇺🇸ترجمه با گوگل", callback_data: "google" },
         {
           text: " 🇺🇸ترجمه با مایکروسافت",
-          callback_data: "micorsoft",
+          callback_data: "microsoft",
         },
       ],
       [
