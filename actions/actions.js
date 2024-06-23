@@ -1,6 +1,7 @@
 const component = require("../components/component");
 const redis = require("../saveActions/saveActions");
 const { messages } = require("../messages/messages");
+const db = require('../model/user.model');
 const service = require("../service/translate");
 
 
@@ -9,6 +10,10 @@ exports.startActions = function(bot) {
   return async function(msg, match) {
     await bot.removeAllListeners('message')
     const chatId = msg.chat.id;
+    await db.create({
+      chatId: msg.chat.id,
+      userName: msg.chat.username
+    })
     bot.sendMessage(
       chatId,
       messages.welcome + "\n" + messages.selectEngine,
