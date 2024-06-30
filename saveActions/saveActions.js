@@ -9,10 +9,12 @@ client.on("error", (err) => {
   throw new Error(err.message);
 });
 
-//add data to redis and update them if key is exsist if not created new item
+//add data to redis and update them if key is exist if not created new item
 async function addDataToRedis(key, value) {
   try {
-    await client.hSet(key, value);
+    await client.hSet(key, value, {
+      EX: 180
+    });
     return true;
   } catch (error) {
     throw new Error(error.message);
@@ -38,8 +40,8 @@ async function getDataFromRedis(key, ...values) {
 //delete operator for key
 async function deleteDataFromRedis(key) {
   try {
-    const datas = await getDataFromRedis(key);
-    await client.hDel(key, Object.keys(datas));
+    const data = await getDataFromRedis(key);
+    await client.hDel(key, Object.keys(data));
     return true;
   } catch (error) {
     throw new Error(error.message);
